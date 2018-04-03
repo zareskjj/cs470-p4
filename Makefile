@@ -12,5 +12,7 @@ $(EXE): $(OBJS)
 	$(CC) $(CFLAGS) -c $<
 
 clean:
-	rm -f $(OBJS) $(EXE)
+	rm -f $(OBJS) $(EXE) dump*.txt
 
+run:
+	salloc -n 4 mpirun ./dht input.txt

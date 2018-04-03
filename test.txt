@@ -1,0 +1,4 @@
+proc 0
+
+put xyz 5
+put stuff 10
