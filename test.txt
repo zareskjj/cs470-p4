@@ -1,4 +1,20 @@
 proc 0
 
-put xyz 5
-put stuff 10
+put bcd 1
+put lol 3
+put rfg 0
+put asdf 1
+put qwert 1
+put qwe 1
+sync
+size
+put rew 0
+put qasdw 1
+put xasdf 1
+put kaaa 2
+put aaaaa 1
+put sssss 2
+put ddddd 3
+put fffff 2
+put gggg 0
+size

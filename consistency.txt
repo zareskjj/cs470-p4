@@ -1,0 +1,18 @@
+proc 0
+  put asdf 1
+proc 1  
+  put asdf 2
+proc 2
+  put asdf 3
+proc 3
+  put asdf 4
+proc 4
+  put asdf 5
+proc 5
+  put asdf 6
+proc 6
+  put asdf 7
+proc 7
+  put asdf 8
+proc 8
+  put asdf 9

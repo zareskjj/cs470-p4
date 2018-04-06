@@ -1,0 +1,28 @@
+proc 0
+  put abcd 1
+# will always get 1 
+  get abcd
+# will be 9 or 10 or Not Found
+  get asdf
+  get asdf
+  get asdf
+  sync
+# will always get 10 because after sync
+  put asdf 10
+  get asdf
+proc 1  
+  put efgh 2
+proc 2
+  put ijkl 3
+proc 3
+  put mnop 4
+proc 4
+  put qrst 5
+proc 5
+  put uvwx 6
+proc 6
+  put yz 7
+proc 7
+  put qwer 8
+proc 8
+  put asdf 9
