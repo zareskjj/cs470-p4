@@ -32,25 +32,39 @@ int mpi_size;
 int lsize;
 
 int confirmed;
-long get_val;
 
+/**
+ * Pthread mutual exclusion utilities for put confirmations
+ */
 pthread_mutex_t confirm_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t confirm_cond = PTHREAD_COND_INITIALIZER;
 pthread_t server_thread;
 
 
+/**
+ * Message struct used for the messages on the client and server threads.
+ */
 typedef struct dht_msg msg_t;
-struct dht_msg {
+struct dht_msg
+{
     char s[MAX_KEYLEN];
     long value;
 };
 
-msg_t blank_msg() {
+
+/**
+ *  Helper function for creating the message struct and zeroing out the message before use.
+ */
+msg_t blank_msg()
+{
     msg_t msg;
     memset(&msg, 0, sizeof(msg_t));
     return msg;
 }
 
+/**
+ * MPI Recv wrapper function, receives from any source a message with the given tag.
+ */
 void tag_recv(msg_t *msg, int tag, MPI_Status *recv_st)
 {
     MPI_Recv(msg, sizeof(msg_t), MPI_BYTE, MPI_ANY_SOURCE, tag, MPI_COMM_WORLD, recv_st);
@@ -65,13 +79,15 @@ void tag_recv(msg_t *msg, int tag, MPI_Status *recv_st)
  * Using the source and tag, the server decides whether or not to accept the pending message
  * in an MPI_Recv call
  */
-void *server(void *ptr) {
+void *server(void *ptr)
+{
     /* Loop until thread receives a termination message */
     while(1) {
         MPI_Status status;
         MPI_Status recv_st;
         msg_t msg = blank_msg();
         
+        // Peeks at the queue of messages for status, containing the source, tag, and other message information
         MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
         /**
          * SERVER WILL ONLY ACCEPT MESSAGES WITH TAGS:
@@ -94,11 +110,13 @@ void *server(void *ptr) {
             // Use helper method to receive the message with the PUT tag, saves the status
             tag_recv(&msg, PUT, &recv_st);
             MPI_Request req;
-            //Put into local table
             local_put(msg.s, msg.value);
             
+            // Dummy message and value
             msg_t ret = blank_msg();
-            ret.value = CONFIRM; //Not really using message here
+            ret.value = CONFIRM; 
+            
+            // Sending to own process was sometimes blocking, this stopped that
             if (status.MPI_SOURCE != rank) 
             {
                 MPI_Send(&ret, sizeof(msg_t), MPI_BYTE, status.MPI_SOURCE, CONFIRM, MPI_COMM_WORLD);
@@ -112,9 +130,13 @@ void *server(void *ptr) {
         {
             tag_recv(&msg, GET, &recv_st);
             MPI_Request req;
+
+            // Process the get message, and prepare new message with value received by local table
             msg_t send_get_value = blank_msg();
             long val = local_get(msg.s);
             send_get_value.value = val;
+
+            // Stopped blocking when sending to self
             if (status.MPI_SOURCE != rank)
             {
                 MPI_Send(&send_get_value, sizeof(msg_t), MPI_BYTE, status.MPI_SOURCE, GET_RETURN_VALUE, MPI_COMM_WORLD);
@@ -126,6 +148,7 @@ void *server(void *ptr) {
         }
         else if (status.MPI_TAG == CONFIRM)
         {
+            // Receive confirmation message from put, signal client thread
             tag_recv(&msg, CONFIRM, &recv_st);
             confirmed = 1;
             pthread_mutex_unlock(&confirm_lock);
@@ -133,11 +156,15 @@ void *server(void *ptr) {
         }
         else if (status.MPI_TAG == TERM)
         {
+            // Received the terminate message from the client, shut down the server thread.
+            // MPI messages are processed in order, terminate will be the last message server processes.
             tag_recv(&msg, TERM, &recv_st);
             pthread_exit(NULL);
         }
         else if (status.MPI_TAG == SIZE)
         {
+            // Received a request for the size of the DHT, all server threads will come to the MPI_Reduce call and give the root process the total
+            // Root process sends result to client thread
             tag_recv(&msg, SIZE, &recv_st);
             long localsz = 0;
             localsz = local_size();
@@ -152,7 +179,8 @@ void *server(void *ptr) {
     }
 }
 
-void put_send(int dest, const char *key, long value) {
+void put_send(int dest, const char *key, long value)
+{
     // Initialize a blank message for new key and value pair
     msg_t msg = blank_msg(); 
     // Copy the new key and value into the struct
@@ -163,7 +191,8 @@ void put_send(int dest, const char *key, long value) {
     MPI_Send(&msg, sizeof(msg_t), MPI_BYTE, dest, PUT, MPI_COMM_WORLD);
 }
 
-long get_send(int src_node, const char *key) {
+long get_send(int src_node, const char *key)
+{
     MPI_Status status;
 
     // Initialize blank message structs for sending and receiving
